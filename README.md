@@ -8,9 +8,19 @@ answer both "what is the latest forecast for Ghent tomorrow at 14:00?" and
 
 ## Run it
 
+You need Docker with Compose v2, meaning the `docker compose` subcommand with
+a space, not the older hyphenated `docker-compose`. Docker Desktop has
+included it for years; check with `docker compose version`. You also need
+internet access, since ingestion fetches from the Open-Meteo API. Nothing else
+has to be installed or configured.
+
 ```bash
 docker compose up --build
 ```
+
+**The first build takes a few minutes**, mostly installing Python packages and
+producing the Next.js production build. It is not stuck. Once the images
+exist, starting takes seconds and ingestion finishes within a few more.
 
 | What | Where |
 |---|---|
@@ -21,9 +31,16 @@ docker compose up --build
 Ports can be moved without editing files: `API_PORT=8080 WEB_PORT=3001 docker compose up --build`.
 Start over from an empty database with `docker compose down -v`.
 
-On startup the database is created and filled within a few seconds, the API
-begins serving, and the scheduler waits for its next daily run. Nothing else
-needs installing or configuring.
+**Expect a single line on the revision charts at first, and that is correct.**
+Forecast revisions only exist once the same city has been forecast on more
+than one day. A fresh clone holds exactly one forecast per city, so the hourly
+chart draws one line and the evolution panel one point, each with a caption
+saying so. A second point appears after the scheduler's next daily run. The
+reasoning is under "Keep every answer, never overwrite" below.
+
+If ingestion cannot reach Open-Meteo, every city is recorded as a timeout and
+the dashboard shows a red warning rather than failing silently. That is the
+system working, not breaking.
 
 The dashboard has four panels: the coming hours with one line per forecast
 issue, how the forecast for one chosen moment has moved over previous days,
