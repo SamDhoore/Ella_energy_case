@@ -1,0 +1,97 @@
+# Belgian Weather Explorer - see spec/00-architecture.md for the reasoning
+# behind startup order, published ports and hostnames.
+#
+#   docker compose up --build      # then open http://localhost:3000
+#
+# Only `api` and `web` publish host ports. `db`, `ingest` and `cron` are
+# reachable solely by service name inside the compose network.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: weather
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather   # local take-home stack; not a production secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Executed by Postgres exactly once, when the pgdata volume is first created.
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weather -d weather"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  # One-shot batch job: runs the per-city loop once after db is healthy, exits 0.
+  ingest:
+    build: ./ingest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://weather:weather@db:5432/weather
+      CITIES_CONFIG: /config/cities.json
+      PAST_DAYS: "7"
+      FETCH_TIMEOUT_SECONDS: "20"
+    volumes:
+      - ./config:/config:ro
+    restart: "no"
+
+  # Same image, long-running: re-runs the ingestion on a schedule (default
+  # daily 03:00 UTC). Lives inside compose so a fresh clone is self-contained.
+  cron:
+    build: ./ingest
+    command: ["python", "-m", "weather_ingest.scheduler"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://weather:weather@db:5432/weather
+      CITIES_CONFIG: /config/cities.json
+      PAST_DAYS: "7"
+      FETCH_TIMEOUT_SECONDS: "20"
+      INGEST_SCHEDULE_UTC: "03:00"
+      # INGEST_INTERVAL_SECONDS: "3600"   # uncomment to run hourly instead
+    volumes:
+      - ./config:/config:ro
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://weather:weather@db:5432/weather
+      CITIES_CONFIG: /config/cities.json
+      CORS_ALLOW_ORIGINS: http://localhost:${WEB_PORT:-3000},http://127.0.0.1:${WEB_PORT:-3000}
+    volumes:
+      - ./config:/config:ro
+    ports:
+      - "${API_PORT:-8000}:8000"     # published: the browser calls this directly
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        # Baked into the browser bundle at build time. It must be a URL the
+        # *browser* can reach, hence localhost + the published api port and
+        # never http://api:8000 (spec/00-architecture.md §10).
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-8000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+    # No depends_on: the web container never calls api/db itself; the browser
+    # does, at runtime, and the dashboard renders honest empty/error states.
+
+volumes:
+  pgdata:

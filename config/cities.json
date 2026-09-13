@@ -1,0 +1,8 @@
+{
+  "cities": [
+    { "id": "brussels", "name": "Brussels", "lat": 50.8503, "lon": 4.3517 },
+    { "id": "antwerp",  "name": "Antwerp",  "lat": 51.2194, "lon": 4.4025 },
+    { "id": "ghent",    "name": "Ghent",    "lat": 51.0543, "lon": 3.7174 },
+    { "id": "liege",    "name": "Liège",    "lat": 50.6326, "lon": 5.5797 }
+  ]
+}

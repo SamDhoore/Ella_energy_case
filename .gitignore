@@ -4,14 +4,14 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+/build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -48,8 +48,6 @@ pnpm-debug.log*
 .npm
 .yarn/
 .pnp.*
-dist/
-build/
 coverage/
 .next/
 .nuxt/
@@ -70,3 +68,6 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
+
+# ---- Case material (not our work; kept local) ----
+weather.pdf
