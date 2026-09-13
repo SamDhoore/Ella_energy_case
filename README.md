@@ -33,8 +33,9 @@ distinguishes loading, nothing to show yet, and could not reach the service.
 ## Repository layout
 
 ```
-spec/            five short spec files, one per layer, each split into what I
-                 specified myself and what Claude derived from it
+spec/            claude-spec.md  the record of how I directed the tool: what I
+                 specified upfront and what I corrected afterwards
+                 00-04           one file per layer, each split the same way
 db/init.sql      schema and indexes (spec/02)
 ingest/          Python batch job + scheduler, with unit tests (spec/04)
 api/             FastAPI service (spec/03)
@@ -68,7 +69,7 @@ Worth knowing before opening the dashboard: a fresh clone holds one forecast
 per city, so the revision views show a single line and a single point. The
 system has to run on two separate days before revisions appear.
 
-### Put each guarantee where it can actually be enforced
+### Put each ingestion guarantee where it can actually be enforced
 
 The brief names three safety properties. The useful question was not how to
 implement each one, but where each belongs.
